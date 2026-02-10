@@ -1,0 +1,173 @@
+# Project: SSH between two Ubuntu Docker containers
+
+### Goal
+
+* Run **2 Ubuntu containers**
+* Container A → **SSH Server**
+* Container B → **SSH Client**
+* Configure **root password**
+* **SSH login from client → server**
+
+---
+
+## 1️⃣ Pull Ubuntu image
+
+```bash
+docker pull ubuntu:22.04
+```
+
+---
+
+## 2️⃣ Create a Docker network (important)
+
+Containers must see each other by name.
+
+```bash
+docker network create ssh-net
+```
+
+---
+
+## 3️⃣ Run SSH Server container
+
+```bash
+docker run -itd \
+--name ssh-server \
+--network ssh-net \
+ubuntu:22.04
+```
+
+Enter the container:
+
+```bash
+docker exec -it ssh-server bash
+```
+
+---
+
+## 4️⃣ Install SSH server inside server container
+
+```bash
+apt-get update
+apt-get install -y openssh-server
+```
+
+Create SSH runtime directory:
+
+```bash
+mkdir -p /var/run/sshd
+```
+
+---
+
+## 5️⃣ Set root password (VERY IMPORTANT)
+
+```bash
+passwd root
+```
+
+Example:
+
+```
+New password: root123
+Retype password: root123
+```
+
+---
+
+## 6️⃣ Allow root login via SSH
+
+Edit SSH config:
+
+```bash
+vi /etc/ssh/sshd_config
+```
+
+Change / ensure:
+
+```text
+PermitRootLogin yes
+PasswordAuthentication yes
+```
+
+Save and exit.
+
+---
+
+## 7️⃣ Start SSH service
+
+```bash
+service ssh start
+```
+
+Check:
+
+```bash
+ps -ef | grep sshd
+```
+
+✅ SSH server is ready.
+
+---
+
+## 8️⃣ Run SSH Client container
+
+```bash
+docker run -it \
+--name ssh-client \
+--network ssh-net \
+ubuntu:22.04
+```
+
+---
+
+## 9️⃣ Install SSH client inside client container
+
+```bash
+apt-get update
+apt-get install -y openssh-client
+```
+
+---
+
+## 🔟 SSH from client → server
+
+Use **container name as hostname**:
+
+```bash
+ssh root@ssh-server
+```
+
+Type **yes** for fingerprint
+Enter password:
+
+```text
+root123
+```
+
+🎉 You are now logged into **ssh-server container**
+
+Verify:
+
+```bash
+hostname
+```
+
+---
+
+## 1️⃣1️⃣ Exit SSH session
+
+```bash
+exit
+```
+
+---
+
+## Architecture View (Mental Model)
+
+```
+ssh-client  ────SSH────>  ssh-server
+   Ubuntu                  Ubuntu
+   openssh-client          openssh-server
+   same docker network
+```
